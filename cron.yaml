@@ -1,4 +1,4 @@
 cron:
 - description: hourly fetch
-  url: tasks/hourlyfetch
+  url: /tasks/hourlyfetch
   schedule: every hour
