@@ -15,6 +15,6 @@ class Document(db.Model):
 
 class WordRecord(db.Model):
     doc = db.ReferenceProperty(reference_class=Document, required=True)
-    abs_wordcount = db.IntegerProperty()
-    change_wordcount = db.IntegerProperty()
+    abs_wordcount = db.IntegerProperty(required=True)
+    change_wordcount = db.IntegerProperty(required=True)
     timestamp = db.DateTimeProperty(required=True, auto_now=True)

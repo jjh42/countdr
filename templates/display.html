@@ -1,0 +1,37 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>Word count</title>
+
+    <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+    <script type='text/javascript'>
+      google.load('visualization', '1', {'packages':['annotatedtimeline']});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('datetime', 'Time');
+        data.addColumn('number', 'word count');
+        data.addColumn('number', 'words changed/added');
+        data.addRows([
+          {% for record in record_list %}
+              [new Date('{{ record.timestamp }}'), {{ record.abs_wordcount }},
+    {{ record.change_wordcount }}],
+          {% endfor %}
+        ]);
+
+        var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
+        chart.draw(data, {displayAnnotations: true});
+      }
+    </script>
+
+</head>
+
+<body>
+<h1>Word count</h1>
+
+
+<div id='chart_div' style='width: 1000px; height: 700px;'></div>
+
+<hr>
+<address></address>
+<!-- hhmts start --> Last modified: Wed Mar  2 17:28:50 EST 2011 <!-- hhmts end -->
+</body> </html>

@@ -35,11 +35,7 @@ import difflib
 import model
 import os
 
-# TODO finish PDF to text conversion and test
-# Using goo.gl to give a better shortcut
-# Write diffing algorithm
 # Write display
-# Write hourly dispatcher
 
 def queue_fetch(doc):
     """Added document to the queue for later fetching."""
@@ -65,8 +61,9 @@ class MainHandler(webapp.RequestHandler):
 
 class HourlyFetchHandler(webapp.RequestHandler):
     def get(self):
-        self.response.out.write('Hello world!')
-
+        logging.info('Hourly fetch')
+        for doc in model.Document.all():
+            queue_fetch(doc)
 
 def get_pdf_text(content):
     """Extract the text of a pdf file."""
@@ -126,7 +123,7 @@ def get_word_stats(newtext, oldtext=None):
                 
     return abs_wc, change_wc
 
-def update_stats(doc):
+def update_doc_stats(doc):
     """Get the absolute and changed words for the new document."""
     content = fetch(doc.url).content
     content_hash = model.gethash(content)
@@ -134,9 +131,9 @@ def update_stats(doc):
     if content_hash == doc.last_version_hash:
         # No change to the document. Copy the old entry
         logging.info('No change to document')
-        oldrec = WordRecord.all().filter('doc=', doc).order('-timestamp').get()
+        oldrec = model.WordRecord.all().filter('doc =', doc).order('-timestamp').get()
         # Save a new copy
-        WordRecord(doc=doc, abs_wordcount=oldrec.abs_wordcount, change_wordcount=0).put()
+        model.WordRecord(doc=doc, abs_wordcount=oldrec.abs_wordcount, change_wordcount=0).put()
     else:
         # The document has changed.
         # We need to run a comparision
@@ -149,7 +146,7 @@ def update_stats(doc):
         current_version = get_text(content)
         abs_wc, change = get_word_stats(current_version, last_version)
         # Add record
-        WordRecord(doc=doc, abs_wordcount=abs_wc, change_wordcount=change).put() 
+        model.WordRecord(doc=doc, abs_wordcount=abs_wc, change_wordcount=change).put() 
         # Update our version of the document.
         doc.last_version_hash = content_hash; doc.last_version = zlib.compress(current_version)
         doc.put()
@@ -158,20 +155,26 @@ def update_stats(doc):
 class FetchDocHandler(webapp.RequestHandler):
     def get(self):
         url_hash = self.request.get('url_hash')
-        logging('Fetching %s' % url_hash)
-        doc = model.Document.all().filter('url_hash=', url_hash).get()
+        logging.info('Fetching %s' % url_hash)
+        doc = model.Document.all().filter('url_hash =', url_hash).get()
+        assert(doc)
+        logging.info(doc)
         update_doc_stats(doc)
 
 class DisplayHandler(webapp.RequestHandler):
     def get(self):
-        url_hash = self.request.get('doc')
-        self.response.out.write('Display document %s' %url_hash)
+        doc = model.Document.all().filter('url_hash =', self.request.get('doc')).get()
+        assert(doc)
+        # Find the corresponding data entries for the document.
+        record_list = model.WordRecord.all()
+        path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
+        self.response.out.write(template.render(path, {'record_list' : record_list}))
 
 
 def main():
     application = webapp.WSGIApplication([('/', MainHandler),
-                                          ('tasks/hourlyfetch', HourlyFetchHandler),
-                                          ('tasks/fetchdoc', FetchDocHandler),
+                                          ('/tasks/hourlyfetch', HourlyFetchHandler),
+                                          ('/tasks/fetchdoc', FetchDocHandler),
                                           ('/count.*', DisplayHandler)],
                                          debug=True)
     util.run_wsgi_app(application)

@@ -1,9 +1,14 @@
-application: countdr
+application: countdr42
 version: 1
 runtime: python
 api_version: 1
 
 handlers:
+
+- url: /favicon.ico
+  static_files: favicon.ico
+  upload: favicon.ico
+
 - url: /tasks/.*
   script: main.py
   login: admin
