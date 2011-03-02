@@ -97,7 +97,6 @@ def get_word_stats(newtext, oldtext=None):
     """Calculate the absolute number of words in the next text and all the change from the old text.
     The text has already been cleaned up a bit (see get_text)."""
     # First the easy bit - absolute word count.
-    print newtext
     abs_wc = len(string.split(newtext))
     change_wc = 0
     if oldtext != None:
@@ -105,8 +104,6 @@ def get_word_stats(newtext, oldtext=None):
         # First split everything into lists
         newtext = string.split(newtext)
         oldtext = string.split(oldtext)
-        d = difflib.Differ().compare(newtext, oldtext)
-        print list(d)
         last_change = None
         for c in difflib.Differ().compare(newtext, oldtext):
             linetype = c[0:2]
