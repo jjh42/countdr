@@ -11,7 +11,6 @@ class TestPdfExtract(unittest.TestCase):
         content = open('tests/simplepdf1.pdf', 'r').read()
         self.assertEqual(main.get_text(content), text)
 
-
 class TestWordStats(unittest.TestCase):
     def test_blank(self):
         self.assertEqual(main.get_word_stats(main.get_text('abc;def ghi  \n jkl3 ')), (4, 0))

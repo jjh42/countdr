@@ -16,7 +16,7 @@
 #
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util, template
-from google.appengine.api.taskqueue import Task
+from google.appengine.api import taskqueue
 from google.appengine.api.urlfetch import fetch
 import logging
 import zlib
@@ -35,12 +35,12 @@ import difflib
 import model
 import os
 
-# Write display
 
 def queue_fetch(doc):
     """Added document to the queue for later fetching."""
     logging.info('Queuing document %s' % doc.url_hash)
-    Task(url='/tasks/fetchdoc', params={'url_hash' : doc.url_hash})
+    taskqueue.add(url='/tasks/fetchdoc', params={'url_hash' : doc.url_hash},
+                  method='GET')
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
@@ -73,11 +73,16 @@ def get_pdf_text(content):
     codec = 'utf-8'
     pagenos = set()
     maxpages = 0
-    rsrcmgr = PDFResourceManager()
+    rsrcmgr = PDFResourceManager(caching=False)
     device = TextConverter(rsrcmgr, outfp, codec=codec, laparams=laparams)
-    process_pdf(rsrcmgr, device, StringIO(content), pagenos, maxpages=maxpages, password=password,
-                    check_extractable=True)
-    return outfp.getvalue()
+    content = StringIO(content)
+    process_pdf(rsrcmgr, device, content, pagenos, maxpages=maxpages, password=password, check_extractable=True,
+                caching=False)
+    output = outfp.getvalue()
+    # Try and free up memory
+    outfp.close()
+    content.close()
+    return output
 
 def get_text(content):
     """Extract text from a file (currently handles PDFs and plain text)."""
@@ -124,6 +129,7 @@ def update_doc_stats(doc):
     """Get the absolute and changed words for the new document."""
     content = fetch(doc.url).content
     content_hash = model.gethash(content)
+    logging.info('Acquired document hash:%s' % content_hash)
     # Check if the document has changed
     if content_hash == doc.last_version_hash:
         # No change to the document. Copy the old entry
@@ -140,6 +146,7 @@ def update_doc_stats(doc):
         else:
             last_version = None
         # Extract text out of new version
+        logging.info('Document change. Calculating new stats')
         current_version = get_text(content)
         abs_wc, change = get_word_stats(current_version, last_version)
         # Add record
@@ -147,6 +154,7 @@ def update_doc_stats(doc):
         # Update our version of the document.
         doc.last_version_hash = content_hash; doc.last_version = zlib.compress(current_version)
         doc.put()
+    logging.info('Updated stats')
 
 
 class FetchDocHandler(webapp.RequestHandler):
