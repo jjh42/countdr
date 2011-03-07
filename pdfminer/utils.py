@@ -2,8 +2,8 @@
 """
 Miscellaneous Routines.
 """
+import struct
 from sys import maxint as INF
-from struct import pack, unpack
 
 
 ##  Matrix operations
@@ -47,6 +47,18 @@ def csort(objs, key):
     """Order-preserving sorting function."""
     idxs = dict( (obj,i) for (i,obj) in enumerate(objs) )
     return sorted(objs, key=lambda obj:(key(obj), idxs[obj]))
+
+# fsplit
+def fsplit(pred, objs):
+    """Split a list into two classes according to the predicate."""
+    t = []
+    f = []
+    for obj in objs:
+        if pred(obj):
+            t.append(obj)
+        else:
+            f.append(obj)
+    return (t,f)
 
 # drange
 def drange(v0, v1, d):
@@ -95,11 +107,11 @@ def nunpack(s, default=0):
     elif l == 1:
         return ord(s)
     elif l == 2:
-        return unpack('>H', s)[0]
+        return struct.unpack('>H', s)[0]
     elif l == 3:
-        return unpack('>L', '\x00'+s)[0]
+        return struct.unpack('>L', '\x00'+s)[0]
     elif l == 4:
-        return unpack('>L', s)[0]
+        return struct.unpack('>L', s)[0]
     else:
         raise TypeError('invalid length: %d' % l)
 
@@ -235,9 +247,9 @@ class Plane(object):
 
 # create_bmp
 def create_bmp(data, bits, width, height):
-    info = pack('<IiiHHIIIIII', 40, width, height, 1, bits, 0, len(data), 0, 0, 0, 0)
+    info = struct.pack('<IiiHHIIIIII', 40, width, height, 1, bits, 0, len(data), 0, 0, 0, 0)
     assert len(info) == 40, len(info)
-    header = pack('<ccIHHI', 'B', 'M', 14+40+len(data), 0, 0, 14+40)
+    header = struct.pack('<ccIHHI', 'B', 'M', 14+40+len(data), 0, 0, 14+40)
     assert len(header) == 14, len(header)
     # XXX re-rasterize every line
     return header+info+data
