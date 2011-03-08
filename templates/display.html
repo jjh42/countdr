@@ -2,7 +2,35 @@
 <html> <head>
 <title>Word count</title>
 
-    <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+    <script type='text/javascript'
+    src='https://www.google.com/jsapi'></script>
+
+    <script type='text/javascript'>
+/**
+ * Date.parse with progressive enhancement for ISO-8601, version 2
+ * © 2010 Colin Snover <http://zetafleet.com>
+ * Released under MIT license.
+ */
+(function () {
+    var origParse = Date.parse;
+    Date.parse = function (date) {
+        var timestamp = origParse(date), minutesOffset = 0, struct;
+        if (isNaN(timestamp) && (struct = /^(\d{4}|[+\-]\d{6})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{3,}))?)?(?:(Z)|([+\-])(\d{2})(?::?(\d{2}))?))?/.exec(date))) {
+            if (struct[8] !== 'Z') {
+                minutesOffset = +struct[10] * 60 + (+struct[11]);
+                
+                if (struct[9] === '+') {
+                    minutesOffset = 0 - minutesOffset;
+                }
+            }
+            
+            timestamp = Date.UTC(+struct[1], +struct[2] - 1, +struct[3], +struct[4], +struct[5] + minutesOffset, +struct[6], +struct[7].substr(0, 3));
+        }
+        
+        return timestamp;
+    };
+}());
+    </script>
     <script type='text/javascript'>
       google.load('visualization', '1', {'packages':['annotatedtimeline']});
       google.setOnLoadCallback(drawChart);
@@ -11,11 +39,8 @@
         data.addColumn('datetime', 'Time');
         data.addColumn('number', 'word count');
         data.addColumn('number', 'words changed/added');
-        data.addRows([
-          {% for record in record_list %}
-              [new Date('{{ record.timestamp }}'), {{ record.abs_wordcount }},
-    {{ record.change_wordcount }}],
-          {% endfor %}
+        data.addRows([{% for record in record_list %}
+              [new Date(Date.parse('{{ record.timestamp|date:"c"}}Z')), {{ record.abs_wordcount }}, {{ record.change_wordcount }}], {% endfor %}
         ]);
 
         var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
@@ -33,5 +58,5 @@
 
 <hr>
 <address></address>
-<!-- hhmts start --> Last modified: Wed Mar  2 17:28:50 EST 2011 <!-- hhmts end -->
+<!-- hhmts start --> Last modified: Tue Mar  8 18:41:21 EST 2011 <!-- hhmts end -->
 </body> </html>

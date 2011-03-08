@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+
+from google.appengine.dist import use_library
+use_library('django', '1.2')
+
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util, template
 from google.appengine.api import taskqueue
