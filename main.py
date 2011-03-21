@@ -24,6 +24,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util, template
 from google.appengine.api import taskqueue
 from google.appengine.api.urlfetch import fetch
+from google.appengine.api import memcache
 import logging
 import zlib
 import magic
@@ -174,13 +175,23 @@ class FetchDocHandler(webapp.RequestHandler):
 
 class DisplayHandler(webapp.RequestHandler):
     def get(self):
-        doc = model.Document.all().filter('url_hash =', self.request.get('doc')).get()
-        assert(doc)
-        # Find the corresponding data entries for the document.
-        record_list = model.WordRecord.all()
-        path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
-        self.response.out.write(template.render(path, {'record_list' : record_list}))
-
+        # Try responding using memcache if possible.
+        url_hash = self.request.get('doc')
+        mc_key = url_hash + '_countcache'
+        rendering = memcache.get(mc_key)
+        if rendering == None:
+            logging.info('Cache miss for %s' % url_hash)
+            doc = model.Document.all().filter('url_hash =', url_hash).get()
+            assert(doc)
+            # Find the corresponding data entries for the document.
+            record_list = model.WordRecord.all()
+            path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
+            rendering = template.render(path, {'record_list' : record_list})
+            memcache.set(mc_key, rendering, time=30*60)
+        else:
+            logging.info('Cache hit for %s' % url_hash)
+        self.response.headers["Cache-Control"] = 'public; max-age=1000'
+        self.response.out.write(rendering)
 
 def main():
     application = webapp.WSGIApplication([('/', MainHandler),
