@@ -185,7 +185,7 @@ class DisplayHandler(webapp.RequestHandler):
             doc = model.Document.all().filter('url_hash =', url_hash).get()
             assert(doc)
             # Find the corresponding data entries for the document.
-            record_list = model.WordRecord.all()
+            record_list = model.WordRecord.all().filter('doc =', doc)
             path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
             rendering = template.render(path, {'record_list' : record_list})
             memcache.set(mc_key, rendering, time=30*60)
