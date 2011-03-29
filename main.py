@@ -177,7 +177,8 @@ class DisplayHandler(webapp.RequestHandler):
     def get(self):
         # Try responding using memcache if possible.
         url_hash = self.request.get('doc')
-        mc_key = url_hash + '_countcache'
+        mc_key = url_hash + '_displaycount_version_' + os.environ['CURRENT_VERSION_ID']
+        logging.info('Rendering with cache key %s' % mc_key)
         rendering = memcache.get(mc_key)
         if rendering == None:
             logging.info('Cache miss for %s' % url_hash)
