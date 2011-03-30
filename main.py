@@ -161,6 +161,8 @@ def update_doc_stats(doc):
         # Update our version of the document.
         doc.last_version_hash = content_hash; doc.last_version = zlib.compress(current_version)
         doc.put()
+    # Junk the cache for this doucment
+    RenderCount(doc.url_hash).delcache()
     logging.info('Updated stats')
 
 
@@ -173,26 +175,53 @@ class FetchDocHandler(webapp.RequestHandler):
         logging.info(doc)
         update_doc_stats(doc)
 
+
+class CachedPageRender(object):
+    """Base class for rendering pages and caching the output in memcache.
+    Subclasses need to set self.key during __init__."""
+    def render(self, handler):
+        """Return render page as a string."""
+        logging.info('Rendering %s', self.key)
+        rendering = memcache.get(self.key)
+        if rendering == None:
+            logging.info('Cache miss for %s' % self.key)
+            rendering = self.uncached_render(handler)
+            memcache.set(self.key, rendering, time=24*60*60)
+        else:
+            logging.info('Cache hit for %s' % self.key)
+        return rendering
+
+    def delcache(self):
+        memcache.delete(self.key)
+        logging.info('Junking cache %s' % self.key)
+
+    def create_versioned_key(self, base_key):
+        """Create a key using base_key string and the name of the subclass along with the
+        version of this deployment (ensuring cached is emptied on new deployments."""
+        version = os.environ['CURRENT_VERSION_ID']
+        self.key = 'CachedPageRender_v' + version + str(self.__class__) + '_' + base_key
+        logging.info('Versioned key %s' % self.key)
+
+class RenderCount(CachedPageRender):
+    """Deal with rendering the webpage showing the statistics of a document.
+    Additionally deals with caching."""
+    def __init__(self, url_hash):
+        self.create_versioned_key(url_hash)
+        self.url_hash = url_hash
+    def uncached_render(self, handler):
+        logging.info('Rendering count doc %s' % self.url_hash)
+        doc = model.Document.all().filter('url_hash =', self.url_hash).get()
+        assert(doc)
+        # Find the corresponding data entries for the document.
+        record_list = model.WordRecord.all().filter('doc =', doc)
+        path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
+        return template.render(path, {'record_list' : record_list})
+
 class DisplayHandler(webapp.RequestHandler):
     def get(self):
-        # Try responding using memcache if possible.
-        url_hash = self.request.get('doc')
-        mc_key = url_hash + '_displaycount_version_' + os.environ['CURRENT_VERSION_ID']
-        logging.info('Rendering with cache key %s' % mc_key)
-        rendering = memcache.get(mc_key)
-        if rendering == None:
-            logging.info('Cache miss for %s' % url_hash)
-            doc = model.Document.all().filter('url_hash =', url_hash).get()
-            assert(doc)
-            # Find the corresponding data entries for the document.
-            record_list = model.WordRecord.all().filter('doc =', doc)
-            path = os.path.join(os.path.dirname(__file__), 'templates/display.html')
-            rendering = template.render(path, {'record_list' : record_list})
-            memcache.set(mc_key, rendering, time=30*60)
-        else:
-            logging.info('Cache hit for %s' % url_hash)
+        url_hash = url_hash = self.request.get('doc')
         self.response.headers["Cache-Control"] = 'public; max-age=1000'
-        self.response.out.write(rendering)
+        self.response.out.write(RenderCount(url_hash).render(self))
 
 def main():
     application = webapp.WSGIApplication([('/', MainHandler),
