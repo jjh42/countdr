@@ -2,9 +2,6 @@
 <html> <head>
 <title>Word count</title>
 
-    <!--- Refresh the page periodically. --->
-    <meta http-equiv="refresh" content="1800">
-
     <script type='text/javascript'
     src='https://www.google.com/jsapi'></script>
 
@@ -61,5 +58,36 @@
 
 <hr>
 <address></address>
-<!-- hhmts start --> Last modified: Mon Mar 21 20:35:34 EST 2011 <!-- hhmts end -->
+<!-- hhmts start --> Last modified: Mon Mar 21 20:35:34 EST 2011 <!-- -->
+<!--hhmts end -->
+
+
+<script type="text/javascript">
+// Script for refreshing the page (but not screwing up if there is no
+// connectivity (i.e. computer has been suspended).
+function my_page_refresh() {
+  // Refresh the page but safely, don't screw up if there is a
+  // connectivity problem.
+  var req = new XMLHttpRequest();
+  req.open('GET', window.location.href, true);
+  req.onreadystatechange = function () {
+     // Deal with the response.
+     if(req.readyState == 4) {
+        if(req.status == 200) {
+            // Successful page load.
+            document.open();
+            document.write(req.responseText);
+            document.close();
+        }
+        else {
+           console.log('Status was ', req.status);
+        }
+     }
+  }
+  req.send();
+  setTimeout(my_page_refresh, 1000*60*10);
+}
+
+setTimeout(my_page_refresh, 1000*60*10);
+</script>
 </body> </html>
